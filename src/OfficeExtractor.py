@@ -9,29 +9,14 @@ pip install PyMuPDF pdfplumber pdf2image
 """
 import os
 import re
-#import sys
-#import glob
 import argparse
-#import fitz
-
-
 #import win32com.client as win32
-
 import csv
-import warnings
-
 #from win32com.client import constants
-#rom zipfile import ZipFile
-from pathlib import Path
-#from pdf2image import convert_from_path
+#from pathlib import Path
 from PIL import Image
-from config.config import Config
 from log.app_logger import AppLogger
-#from service.extraction_service import ExtractionService 
 from service.extraction_service import ExtractionService
-warnings.simplefilter(action='ignore', category=FutureWarning)
-warnings.simplefilter(action='ignore', category=DeprecationWarning)
-warnings.simplefilter(action='ignore', category=UserWarning)
 
 class OfficeExtractor(object):
     
@@ -39,26 +24,10 @@ class OfficeExtractor(object):
     
     @classmethod
     def go(cls):
-        #inputDirectory = "C:\\Users\\oggie\\eclipse-workspace-python\\envs\\officeextractor\\input"
-        #outputDirectory = "C:\\Users\\oggie\\eclipse-workspace-python\\envs\\officeextractor\\output"
         cls.log.info("This is the OfficeExtractor process")
-        
-        
-     
-        """
-        extractspecs = os.path.abspath(outputDir + "/extractspecs.csv")
-        cls.log.info("The extractspecs.csv file has been created in " + str(outputDir))
-
-        fp = open(extractspecs, 'w', newline='', encoding='utf-8')
-        writer = csv.writer(fp)
-        headers = ['filepath', 'filename','ext','filesize','images'];
-        writer.writerow(headers)
-        cls.log.info("Headers written to " + str(extractspecs) + " : " + str(headers))
-        """
-        
         #oe.log().info(f'oe.extract src={filelist}, dest={outputDirectory}')
         #oe.extract(src=filelist, dest=outputDirectory)
-        ExtractionService(Config.get_property("input.directory"), Config.get_property("output.directory")).extract()
+        ExtractionService().extract()
         #oe.image_summary(imgdir=outputDirectory)
         #oe.__del__()
 

@@ -16,3 +16,4 @@ libs/
 output/
 python*.*
 share/
+*__pycache__*

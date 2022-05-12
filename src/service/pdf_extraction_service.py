@@ -1,17 +1,21 @@
 import fitz
 import os
 import pdfplumber
+from config.config import Config
 from pdf2image import convert_from_path as PDF2Image_convert_from_path
 from log.app_logger import AppLogger
 
 
 class PdfExtractionService(object):
-    log = AppLogger.get_logger()
+    
+    def __init__(self):
+        self.log = AppLogger.get_logger()
+        self.config = Config()
 
-    @classmethod
-    def extract(cls, input_file_path: str, image_directory: str):
+    #extraction_entry_list = PdfExtractionService.extract(input_file_path, image_directory, extraction_entry)
+    def extract(self, input_file_path: str, image_directory: str, extraction_entry: dict) -> list:
         
-        num_images = 0
+        extraction_list = list()
   
         try:
             with pdfplumber.open(os.path.abspath(input_file_path)) as pdf:
@@ -19,21 +23,18 @@ class PdfExtractionService(object):
                 text = page.extract_text()
                 
                 if text is not None: # searchable
-                    writer_image_dict = cls.pdf_extract(input_file_path, image_directory)
+                    #image_extractions = cls.pdf_extract(input_file_path, image_directory, extraction_entry)
+                    extraction_list.extend(self.pdf_extract(input_file_path, image_directory, extraction_entry))
                 else: # scanned
+                    #  should be returning a list of images ?
                     num_images = PDF2Image_convert_from_path(os.path.abspath(input_file_path), output_folder=image_directory, fmt="jpg")
         except Exception as e:
-            cls.log.error(f'Failed to extract media from {input_file_path}')
-            cls.log.error(str(type(e)))
-            cls.log.error(str(e))
-            num_images = "ERROR"
+            self.log.error(str(type(e)))
+            self.log.error(str(e))
             
-        return writer_image_dict
+        return extraction_list
 
-
-    @classmethod
-    def pdf_extract(cls, input_file_path: str, image_directory: str):
-         
+    def pdf_extract(self, input_file_path: str, image_directory: str, extraction_entry: dict) -> list:
         # open pdf file
         pdf_file = fitz.open(input_file_path)
                 
@@ -41,8 +42,9 @@ class PdfExtractionService(object):
         number_of_pages = len(pdf_file)
 
         # image counter
-        nimags = 0
+        #nimags = 0
         
+        # list of result dictionaries
         return_list = list()
 
         #iterating through each page in the pdf
@@ -63,15 +65,18 @@ class PdfExtractionService(object):
                     #new_image.writePNG("{}/image{}-{}.png".format(image_directory,current_page_index, img_index))
                     new_image.writePNG(image_file)
                     
-                cls.log.info(str(image_directory) + " /image" + str(current_page_index) + "-" + str(img_index) + ".png")                      
-                nimags = nimags + 1
+                #self.log.info(str(image_directory) + " /image" + str(current_page_index) + "-" + str(img_index) + ".png")                      
+                #nimags = nimags + 1
                 
-                entry = {"writer_output_file_path": image_directory, 
-                        "writer_output_file_name": os.path.basename(os.path.splitext(image_file)[0]), 
-                        "writer_output_file_ext": ".png", 
-                        "writer_output_file_size": str(os.stat(image_file).st_size)
-                        }                
-                return_list.append(entry)
+                extraction_entry = self.config.extraction_entry_output(extraction_entry, {
+                    self.config.header_out_filepath : image_directory,
+                    self.config.header_out_filename : os.path.basename(os.path.splitext(image_file)[0]),
+                    self.config.header_out_file_ext : ".png",
+                    self.config.header_out_file_size : str(os.stat(image_file).st_size)
+                })
+                
+                self.log.info(str(extraction_entry))
+                return_list.append(extraction_entry)
                 
         return return_list
 

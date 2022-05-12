@@ -1,6 +1,9 @@
 import csv
+import json
 import os
+import sys
 #import pdfplumber
+from datetime import datetime
 from pathlib import Path
 #from pdf2image import convert_from_path
 from config.config import Config
@@ -13,50 +16,34 @@ from utils.file_utils import FileUtils
 
 class ExtractionService(object):
     
-    def __init__(self, inputDirectory: str, outputDirectory: str):        
+    def __init__(self):  
+        self.config = Config()      
         self.log = AppLogger.get_logger()
-        self.log.info("This is the ExtractionService")
+        self.log.info("This is the ExtractionService")       
         
-        """
-        self.supported_filetypes = [
-        'docx', 'docm', 'dotx', 'dotm', 'xlsx', 'xlsm', 'xltx', 'xltm',
-        'pptx', 'pptm', 'potm', 'potx', 'ppsx', 'ppsm', 'odt',  'ott',
-        'ods',  'ots',  'odp',  'otp',  'odg',  'doc',  'dot',  'ppt',
-        'pot',  'xls',  'xlt',  'pdf'
-        ]
-        """
-        self.log.info("Input directory: " + inputDirectory)
-        if not os.path.exists(outputDirectory):
-            self.log.info("Creating an output directory: "  + str(outputDirectory))
-            os.makedirs(outputDirectory)
-        else:
-            self.log.info("Output directory verfied: " + str(outputDirectory))
+        self.supported_filetypes = Config().get_supported_file_extensions()
+        self.inputDirectory = Config().get_property("input.directory")
+        self.outputDirectory = Config().get_property("output.directory")
+        
+        if not os.path.exists(self.outputDirectory):
+            self.log.info("Creating output directory: "  + str(self.outputDirectory))
+            os.makedirs(self.outputDirectory)
+        
+        # the log file where we enter 1 entry per image extraction 
+        now = datetime.now()
+        self.extractspecs = os.path.abspath(self.outputDirectory + "/extractspecs_" + now.strftime("%Y") + now.strftime("%m") + now.strftime("%d") + "_" + now.strftime("%H%M%S")  + ".csv")
+        self.log.info("The extractspecs.csv file: " + os.path.join(self.outputDirectory, self.extractspecs))
 
-        #self.log.info("The supported file types are: ")
-        #self.log.info(str(self.supported_filetypes))
-        
-        self.inputDirectory = inputDirectory
-        self.outputDirectory = outputDirectory
-        
-        extractspecs = os.path.abspath(outputDirectory + "/extractspecs.csv")
-        self.log.info("The extractspecs.csv file has been created in " + str(outputDirectory))
-
-        fp = open(extractspecs, 'w', newline='', encoding='utf-8')
-        self.writer = csv.writer(fp)
-        headers = ['input_filepath', 'input_filename','input_ext','input_filesize', 
-                   'output_filepath', 'output_filename','output_ext','output_filesize'];
-        
-        self.writer.writerow(headers)
-        self.log.info("Headers written to " + str(extractspecs) + " : " + str(headers))
-        
-        results = dict.fromkeys(headers)
-        self.log.info(str(results))
-
-    
-    #def extract(self, inputDirectory:str, outputDirectory:str, writer):
+        self.fp = open(self.extractspecs, 'w', newline='', encoding='utf-8')
+        #self.writer = csv.writer(fp)       
+        #self.writer.writerow(list(self.config.init_extraction_entry().keys()))
+        self.writer = csv.DictWriter(self.fp, list(self.config.init_extraction_entry().keys())) 
+        self.writer.writeheader()
+       
     def extract(self):
-        #Extract audio, images, and video from common office files.
-          
+        extraction_entry_list = list()
+        
+        #Extract audio, images, and video from common office files. 
         input_file_list = os.listdir(self.inputDirectory)
     
         for input_file_name in input_file_list:
@@ -64,18 +51,20 @@ class ExtractionService(object):
             file_extension = input_file_name.split(".")[-1]
             
             if not file_extension in self.supported_filetypes:
-                self.log.warn(file_extension + " is not a supported file type")
+                self.log.warn(file_extension + " is not a supported file type: Skipping " + input_file_name)
                 continue
         
             input_file_path = os.path.join(self.inputDirectory, input_file_name)
             image_directory = os.path.join(self.outputDirectory, "Extracted_"+ "".join(input_file_name.split(".")[:-1]))
+             
+            extraction_entry = Config().extraction_entry_input({
+                self.config.header_in_filepath : os.path.dirname(input_file_path),
+                self.config.header_in_filename : os.path.basename(os.path.splitext(input_file_path)[0]),
+                self.config.header_in_file_ext : os.path.splitext(input_file_path)[1],
+                self.config.header_in_file_size : os.stat(input_file_path).st_size
+                })
             
-            writer_input_file_path = os.path.dirname(input_file_path)
-            writer_input_file_name = os.path.basename(os.path.splitext(input_file_path)[0])
-            writer_input_file_extension = os.path.splitext(input_file_path)[1]
-            writer_input_file_size = os.stat(input_file_path).st_size
 
-            writer_output_list = list()
             nimags = 0
    
             FileUtils.create_folder(image_directory)     
@@ -117,24 +106,23 @@ class ExtractionService(object):
                     print(f'Failed to extract media from {os.path.basename(file_name_path)} after conversion to PDF')
 
             elif file_extension == 'pdf':
-                writer_output_list = PdfExtractionService.extract(input_file_path, image_directory)
+                extraction_entry_list.extend(PdfExtractionService().extract(input_file_path, image_directory, extraction_entry))
             else:
                 try:
                     #self.log.info("Skipping this file for now")
                     # skip for right now
                     #self.office_extract(os.path.abspath(file_name_path), output_folder)
-                    writer_output_list = OtherExtractionService.other_extraction(input_file_path, image_directory)
+                    #OtherExtractionService().other_extraction(input_file_path, image_directory, extraction_entry)
+                    extraction_entry_list.extend(OtherExtractionService().other_extraction(input_file_path, image_directory, extraction_entry))
                     #print("SKIP otherextractionservice for now...")
-                except:
-                    print(f'Failed to extract media from {os.path.basename(file_name_path)}')
-                  
-            self.log.info(str(nimags) + " media files extracted from " + input_file_path)   
-            
-            
-            for dct in writer_output_list:                                   
-                self.writer.writerow([writer_input_file_path, writer_input_file_name, writer_input_file_extension, writer_input_file_size, 
-                                      str(dct["writer_output_file_path"]),
-                                      dct["writer_output_file_name"],
-                                      dct["writer_output_file_ext"],
-                                      dct["writer_output_file_size"]
-                                      ])
+                except Exception as e:
+                    self.log.error(str(e))
+                    sys.exit()
+                    
+        # write out the extraction results to CSV file
+        try:
+            self.writer.writerows(extraction_entry_list)
+            self.fp.close()
+        except Exception as e:
+            self.log.error(str(type(e)))
+              
