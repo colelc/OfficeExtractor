@@ -38,6 +38,7 @@ class Config(object):
 
             self.supported_file_extensions = self.get_property("supported.file.extensions").replace(" ", "").split(",")#.split(",") if str else list()
             
+            self.header_message = Config().get_property("header.message")
             self.header_host_ip = Config().get_property("header.host.ip")
             self.header_host_name = Config().get_property("header.host.name")
             self.header_in_filepath = Config().get_property("header.in.filepath")
@@ -66,16 +67,17 @@ class Config(object):
         self.result[self.header_host_name] = self.host_name
         return self.result
     
-    def extraction_entry_input(self, input_values: dict) -> dict:
+    def extraction_entry_input(self, message: str, input_values: dict) -> dict:
         self.result = Config().init_extraction_entry()
+        self.result[self.header_message] = message
         self.result[self.header_in_filepath] = input_values[self.header_in_filepath]
         self.result[self.header_in_filename] = input_values[self.header_in_filename]
         self.result[self.header_in_file_ext] = input_values[self.header_in_file_ext]
         self.result[self.header_in_file_size] = input_values[self.header_in_file_size]
         return dict(self.result)
     
-    def extraction_entry_output(self, input_values: dict, output_values: dict) -> dict:
-        self.result = Config().extraction_entry_input(input_values)
+    def extraction_entry_output(self, message: str, input_values: dict, output_values: dict) -> dict:
+        self.result = Config().extraction_entry_input(message, input_values)
         self.result[self.header_out_filepath] = output_values[self.header_out_filepath]
         self.result[self.header_out_filename] = output_values[self.header_out_filename]
         self.result[self.header_out_file_ext] = output_values[self.header_out_file_ext]
