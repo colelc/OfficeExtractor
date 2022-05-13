@@ -49,6 +49,7 @@ class Config(object):
             self.header_out_file_ext = Config().get_property("header.out.file.ext")
             self.header_out_file_size = Config().get_property("header.out.file.size")
             self.input = "input"
+            self.work_directory = Config().get_property("work.directory")
             
         # need a new copy of result for each extraction - this is an exception to the singleton pattern
         self.result = dict.fromkeys(self.get_property("extraction.headers").replace(" ", "").split(",")) #if str else list())

@@ -149,23 +149,8 @@ class OfficeExtractor(object):
         
         return new_file_abs
     
+    """
     def doc2pdf(self, path):
-        """
-        Convert Word document files (1997-2003 *.xls) to Portable
-        Document Format (*.pdf)
-
-        Parameters
-        ----------
-        path : string
-            Full path and name to file to be converted.
-
-        Returns
-        -------
-        new_file_abs : string
-            Return path and name to converted file.
-
-        """
-
         word = win32.Dispatch("Word.Application")
         # word.Visible = 1
         word.DisplayAlerts = 0
@@ -180,6 +165,7 @@ class OfficeExtractor(object):
         word.Quit()
         
         return new_file_abs
+    """
     
     def doc2docx(self, path):
         """
